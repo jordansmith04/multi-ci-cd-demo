@@ -9,7 +9,7 @@ The goal is to automate the entire lifecycle: code change → build → test →
 | Feature    | Tool(s) | Skill |
 | -------- | ------- | ------- | 
 | Containerization  | Docker   |  Dockerfile best practices, image optimization |
-| CI/CD Automation | GitHub Actions, GitLab CI, AWS CodeBuild | Workflow authoring, environment setup, secret management |
+| CI/CD Automation | GitHub Actions, GitLab CI, AWS CodeBuild, Jenkins | Workflow authoring, environment setup, secret management |
 | Container Registry    | Amazon ECR (Elastic Container Registry)  | Authentication flows, image tagging, and publishing |
 | Deployment | AWS CodeDeploy / ECS | Infrastructure as Code (IaC) principles, deployment hooks, application monitoring (conceptual) |
 | Application | Python Flask | Simple web service setup for demonstration |
@@ -29,6 +29,8 @@ The goal is to automate the entire lifecycle: code change → build → test →
 |   ├── install_docker.sh             # Install Docker on EC2
 |   ├── start_container.sh            # Runs application container on EC2
 |   ├── validate_service.sh           # Verify application is running 
+├── Jenkins-CICD
+|   ├── Jenkinsfile                   # Jenkins Declarative Pipeline
 └── FlaskApp
    ├── Dockerfile                # Defines the Python environment container
    ├── app.py                    # The simple Flask application
@@ -41,6 +43,6 @@ The goal is to automate the entire lifecycle: code change → build → test →
 
 Registry: All CI/CD workflows are configured to push the resulting Docker image to AWS ECR.
 
-Deployment: The target deployment environment is assumed to be AWS ECS or EC2 using CodeDeploy, triggered by a successful push to ECR/merge to main.
+Deployment: The target deployment environment is assumed to be AWS ECS or EC2.
 
 Secrets: All API keys, AWS credentials, ECR repository names, and region details are managed via encrypted secrets in the respective CI/CD platforms (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, ECR_REGISTRY_URL, etc.).

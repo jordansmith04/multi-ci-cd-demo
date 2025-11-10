@@ -1,0 +1,121 @@
+// Declarative Jenkins Pipeline for CI/CD to AWS ECR/ECS
+pipeline {
+    agent { 
+        label 'jenkins-worker' 
+    }
+
+    environment {
+        // AWS ECR/ECS Configuration
+        AWS_REGION       = 'us-east-1'
+        ECR_REPOSITORY   = 'ci-cd-demo-repo'
+        ECS_CLUSTER      = 'ci-cd-demo-cluster'
+        ECS_SERVICE      = 'ci-cd-demo-service'
+        CONTAINER_NAME   = 'ci-cd-flask-container'
+        
+        // AWS credential ID in Jenkins credentials store
+        AWS_CREDS_ID     = 'aws-ecr-ecs-creds' 
+        
+        // Dynamic variables
+        IMAGE_TAG        = sh(returnStdout: true, script: 'echo ${GIT_COMMIT} | cut -c1-7').trim()
+        AWS_ACCOUNT_ID   = sh(returnStdout: true, script: 'aws sts get-caller-identity --query "Account" --output text').trim()
+        ECR_REGISTRY     = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        IMAGE_FULL_URI   = "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+    }
+
+    options {
+        // Clean the workspace before and after execution
+        skipDefaultCheckout()
+    }
+
+    stages {
+        // Checkout source code
+        stage('Checkout') {
+            steps {
+                // Assuminf Jenkins job is configured with the SCM details
+                checkout scm
+                echo "Source checked out successfully. Commit: ${IMAGE_TAG}"
+            }
+        }
+
+        // Unit Test
+        stage('Test') {
+            agent {
+                docker { image 'python:3.9-slim' }
+            }
+            steps {
+                echo "Running unit tests..."
+                sh 'pip install -r requirements.txt'
+                sh 'python -m unittest test_app.py'
+            }
+        }
+        
+        // Build and push to ECR
+        stage('BuildAndPush') {
+            agent {
+                docker { image 'docker:20.10.16' }
+            }
+            steps {
+                script {
+                    // Requires ECR Plugin for Jenkins
+                    withAWS(credentials: AWS_CREDS_ID, region: AWS_REGION) {
+                        
+                        // Build image, passing version as build-arg for app.py
+                        def img = docker.build("${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}", 
+                                               "--build-arg APP_VERSION=${IMAGE_TAG} .")
+                        
+                        // Push tagged image
+                        img.push()
+                        
+                        // Push 'latest' tag
+                        img.addTag("latest")
+                        img.push("latest")
+                        
+                        echo "Docker image pushed to ECR: ${IMAGE_FULL_URI}"
+                    }
+                }
+            }
+        }
+
+        // Deploy to ECS
+        stage('DeployECS') {
+            agent {
+                docker { image 'amazon/aws-cli:latest' }
+            }
+            steps {
+                script {
+                    // Use AWS credentials for ECS deployment
+                    withAWS(credentials: AWS_CREDS_ID, region: AWS_REGION) {
+
+                        // Install jq for JSON manipulation
+                        sh 'apk add --no-cache jq' 
+
+                        // Update Task Definition JSON with the new image URI
+                        sh """
+                        echo "Updating task-definition.json with image URI: ${IMAGE_FULL_URI}"
+                        JQ_QUERY='.containerDefinitions[0].image = "${IMAGE_FULL_URI}"'
+                        jq "\$JQ_QUERY" task-definition.json > task-definition-new.json
+                        """
+
+                        // Register New Task Definition
+                        sh """
+                        echo "Registering new ECS Task Definition..."
+                        # Replace the placeholder \${AWS_ACCOUNT_ID} in the JSON
+                        sed -i "s/\\\$ {AWS_ACCOUNT_ID}/${AWS_ACCOUNT_ID}/g" task-definition-new.json
+                        TASK_DEF_ARN=\$(aws ecs register-task-definition --cli-input-json file://task-definition-new.json | jq -r '.taskDefinition.taskDefinitionArn')
+                        echo "New Task Definition ARN: \$TASK_DEF_ARN"
+
+                        # Force ECS Service Deployment
+                        echo "Updating ECS Service ${ECS_SERVICE} on Cluster ${ECS_CLUSTER}..."
+                        aws ecs update-service \
+                            --cluster ${ECS_CLUSTER} \
+                            --service ${ECS_SERVICE} \
+                            --task-definition \$TASK_DEF_ARN \
+                            --force-new-deployment
+                        """
+                        echo "ECS deployment initiated successfully."
+                    }
+                }
+            }
+        }
+    }
+}
