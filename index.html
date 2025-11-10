@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CI/CD Pipeline Demo | DevOps Portfolio</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Define Inter font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 sm:p-8">
+    
+    <div class="w-full max-w-4xl bg-white shadow-xl rounded-2xl p-6 sm:p-10">
+
+        <!-- Header -->
+        <header class="text-center pb-8 border-b border-gray-200">
+            <h1 class="text-4xl font-extrabold text-gray-800">CI/CD Pipeline Demo</h1>
+            <p class="mt-2 text-xl text-indigo-600 font-semibold">SRE / DevOps Portfolio Showcase</p>
+        </header>
+
+        <!-- Project Overview -->
+        <section class="mt-8">
+            <h2 class="text-2xl font-bold text-gray-700 mb-4 border-b pb-2">Overview</h2>
+            <p class="text-gray-600 leading-relaxed">
+                This project demonstrates cross-platform deployment automation for a simple containerized Python Flask application. The goal was to implement a full build-test-push-deploy loop using three distinct CI/CD tools, all pushing to a central AWS ECR registry and deploying to AWS ECS.
+            </p>
+        </section>
+
+        <!-- Key Artifacts -->
+        <section class="mt-8">
+            <h2 class="text-2xl font-bold text-gray-700 mb-4 border-b pb-2">Key Artifacts & Configurations</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
+
+                <!-- Artifact 1: GitHub Actions -->
+                <div class="bg-indigo-50 p-5 rounded-xl shadow-lg transition duration-300 hover:shadow-2xl">
+                    <h3 class="text-xl font-bold text-indigo-700">1. GitHub Actions</h3>
+                    <p class="mt-2 text-sm text-gray-600">Full CI/CD flow from push → Test → ECR Push → ECS Deploy.</p>
+                    <a href="https://github.com/jordansmith04/multi-ci-cd-demo/blob/main/.github/workflows/ci-cd.yml" target="_blank" class="mt-3 inline-block text-sm font-semibold text-indigo-500 hover:text-indigo-800">
+                        View ci-cd.yml &rarr;
+                    </a>
+                </div>
+
+                <!-- Artifact 2: GitLab CI/CD -->
+                <div class="bg-sky-50 p-5 rounded-xl shadow-lg transition duration-300 hover:shadow-2xl">
+                    <h3 class="text-xl font-bold text-sky-700">2. GitLab CI</h3>
+                    <p class="mt-2 text-sm text-gray-600">Replicated pipeline logic using GitLab's native `.gitlab-ci.yml` syntax for multi-cloud deployment.</p>
+                    <a href="https://github.com/jordansmith04/multi-ci-cd-demo/blob/main/.gitlab-ci.yml" target="_blank" class="mt-3 inline-block text-sm font-semibold text-sky-500 hover:text-sky-800">
+                        View .gitlab-ci.yml &rarr;
+                    </a>
+                </div>
+
+                <!-- Artifact 3: AWS CodeBuild & Deploy -->
+                <div class="bg-emerald-50 p-5 rounded-xl shadow-lg transition duration-300 hover:shadow-2xl">
+                    <h3 class="text-xl font-bold text-emerald-700">3. AWS Code</h3>
+                    <p class="mt-2 text-sm text-gray-600">Configuration for AWS CodePipeline stages: CodeBuild (</p>
+                    <a href="https://github.com/jordansmith04/multi-ci-cd-demo/blob/main/buildspec.yml" target="_blank" class="mt-3 inline-block text-sm font-semibold text-emerald-500 hover:text-emerald-800">
+                        View buildspec.yml &rarr;
+                    </a>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+</body>
+</html>
