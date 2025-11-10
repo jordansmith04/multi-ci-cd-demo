@@ -1,0 +1,73 @@
+# This file is used to configure your GitLab CI/CD pipeline.
+# It assumes you have a Kubernetes/ECS cluster connected to GitLab or 
+# have defined AWS credentials as CI/CD variables (e.g., AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY).
+
+image: docker:20.10.16 
+variables:
+  AWS_REGION: "us-east-1"
+  ECR_REPOSITORY: "ci-cd-demo-repo"
+  ECR_REGISTRY: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+  IMAGE_URI: "${ECR_REGISTRY}/${ECR_REPOSITORY}"
+
+# Enable Docker in Docker
+services:
+  - docker:20.10.16-dind
+
+stages:
+  - build
+  - test
+  - deploy
+
+# Build the Docker image
+build_image:
+  stage: build
+  script:
+    - echo "Running Build Stage..."
+    - docker build -t $IMAGE_URI:$CI_COMMIT_SHORT_SHA .
+    - docker tag $IMAGE_URI:$CI_COMMIT_SHORT_SHA $IMAGE_URI:latest
+  # Save the built image locally for the next stage (test)
+  # This is crucial for passing artifacts between stages
+  artifacts:
+    paths:
+      - .
+
+# Run tests against the built image (Tests not implemented, placeholder only)
+unit_test:
+  stage: test
+  script:
+    - echo "Running Unit Tests..."
+    - echo "Tests successful."
+    # In a real scenario, you'd run a command like:
+    # docker run $IMAGE_URI:$CI_COMMIT_SHORT_SHA python -m pytest
+  dependencies:
+    - build_image
+
+# Push to ECR and Trigger Deployment
+deploy_production:
+  stage: deploy
+  only:
+    - main
+  script:
+    - echo "Running Deploy Stage (Pushing to ECR)..."
+    # Install AWS CLI and configure ECR login
+    - apk add --no-cache curl
+    - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+    - unzip awscliv2.zip
+    - ./aws/install
+    
+    # Configure AWS (requires AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY from CI/CD variables)
+    - aws configure set default.region $AWS_REGION
+    
+    # ECR Login
+    - docker login -u AWS -p $(aws ecr get-login-password --region $AWS_REGION) $ECR_REGISTRY
+    
+    # Push the tagged images
+    - docker push $IMAGE_URI:$CI_COMMIT_SHORT_SHA
+    - docker push $IMAGE_URI:latest
+
+    - echo "Image Pushed. Triggering Deployment (Conceptual)..."
+    # This is where you would call AWS CodeDeploy or update an ECS service 
+    # using the AWS CLI or specialized GitLab Auto-DevOps features.
+    # Example: aws ecs update-service --cluster MyCluster --service MyService --force-new-deployment
+  dependencies:
+    - unit_test

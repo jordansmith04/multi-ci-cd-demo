@@ -1,0 +1,58 @@
+# This file defines the commands and environment for AWS CodeBuild
+version: 1.0
+
+# Variables defined here will override any environment variables set in the CodeBuild project configuration
+env:
+  variables:
+    AWS_REGION: "us-east-1" 
+    ECR_REPOSITORY: "ci-cd-demo-repo"
+  # ECR_ACCOUNT_ID: <Your-AWS-Account-ID>
+
+phases:
+  install:
+    commands:
+      # Install necessary packages for testing and Docker operations
+      - echo "Installing dependencies..."
+      # Install the AWS CLI v2
+      - apt-get update && apt-get install -y python3-pip
+      - pip3 install -r requirements.txt
+
+  pre_build:
+    commands:
+      # Run unit tests
+      - echo "Running Unit Tests..."
+      - python3 -m unittest test_app.py
+      - echo "Tests successful. Proceeding to image build."
+
+  build:
+    commands:
+      - echo "Building Docker image..."
+      - export IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7) # Use 7 characters of the commit hash
+      - export ECR_URI=$ECR_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - export IMAGE_FULL_URI=$ECR_URI/$ECR_REPOSITORY
+      
+      # Build the image, passing the version as a build argument
+      - docker build -t $IMAGE_FULL_URI:$IMAGE_TAG --build-arg APP_VERSION=$IMAGE_TAG .
+      - docker tag $IMAGE_FULL_URI:$IMAGE_TAG $IMAGE_FULL_URI:latest
+
+  post_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      # Use the CodeBuild service role permissions to log into ECR
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URI
+      
+      - echo "Pushing Docker images to ECR..."
+      - docker push $IMAGE_FULL_URI:$IMAGE_TAG
+      - docker push $IMAGE_FULL_URI:latest
+      
+      - echo "Creating imagedefinitions.json for CodeDeploy/ECS..."
+      # This artifact tells AWS CodeDeploy/ECS which image to use for deployment.
+      - printf '[{"name":"ci-cd-flask-container","imageUri":"%s"}]' "$IMAGE_FULL_URI:$IMAGE_TAG" > imagedefinitions.json
+      
+artifacts:
+  files:
+    # This is the essential file for ECS/CodeDeploy to pick up the new image tag
+    - imagedefinitions.json
+    # Include the appspec.yml for CodeDeploy EC2 path
+    - appspec.yml
+  discard-paths: yes

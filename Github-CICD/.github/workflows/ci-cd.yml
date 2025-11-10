@@ -1,0 +1,61 @@
+name: GitHub Actions CI/CD to ECR
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+      
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: ci-cd-demo-repo
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build, Tag, and Push image to ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_URI: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+      run: |
+        # Build the Docker image
+        docker build -t $IMAGE_URI:$IMAGE_TAG .
+        
+        # Tag the image with 'latest' as well
+        docker tag $IMAGE_URI:$IMAGE_TAG $IMAGE_URI:latest
+
+        # Push the images
+        echo "Pushing $IMAGE_URI:$IMAGE_TAG and $IMAGE_URI:latest to ECR..."
+        docker push $IMAGE_URI:$IMAGE_TAG
+        docker push $IMAGE_URI:latest
+
+    - name: Deploy to ECS/CodeDeploy (Conceptual Step)
+      run: |
+        echo "Deployment is triggered upon successful push to ECR."
+        echo "Next steps involve configuring a CodeDeploy deployment group or updating an ECS service."
+        
+        # Example: Deploying using aws cli (Requires IAM permissions)
+        # aws codedeploy create-deployment \
+        #   --application-name MyAppName \
+        #   --deployment-group-name MyDeploymentGroup \
+        #   --deployment-config-name CodeDeployDefault.OneAtATime \
+        #   --s3-location bucket=MyDeploymentBucket,key=deployment_package.zip,bundleType=zip
