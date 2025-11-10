@@ -1,29 +1,24 @@
 # This file is for AWS CodeDeploy, which handles deploying the application 
 # to EC2 instances or updating an ECS service.
-# For a containerized application, this is typically used alongside 
-# AWS CodeBuild to create the deployment package (like a modified Task Definition)
-# or directly by CodeDeploy to manage a fleet of EC2 instances.
-
 version: 1.0
 os: linux 
 
 files:
-  # This section is generally for EC2 deployments. 
-  # For ECS, CodeDeploy mostly manages the Task Definition and traffic.
   - source: /
     destination: /home/ec2-user/ci-cd-demo/
 
 hooks:
-  # Hooks run scripts on the EC2 instance during various stages of deployment
-  # For EC2 (requires a script to pull the image and run the container)
+  # installs Docker on the EC2 instance before starting the application
   BeforeInstall:
     - location: scripts/install_docker.sh
       timeout: 300
       runas: root
+  # Runs the script to start the Docker container
   ApplicationStart:
     - location: scripts/start_container.sh
       timeout: 300
       runas: root
+  # Validates that the service is running correctly after deployment
   ValidateService:
     - location: scripts/validate_service.sh
       timeout: 300

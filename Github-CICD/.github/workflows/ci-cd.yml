@@ -48,14 +48,14 @@ jobs:
         docker push $IMAGE_URI:$IMAGE_TAG
         docker push $IMAGE_URI:latest
 
-    - name: Deploy to ECS/CodeDeploy (Conceptual Step)
+    - name: Deploy to ECS/CodeDeploy
       run: |
         echo "Deployment is triggered upon successful push to ECR."
-        echo "Next steps involve configuring a CodeDeploy deployment group or updating an ECS service."
         
-        # Example: Deploying using aws cli (Requires IAM permissions)
-        # aws codedeploy create-deployment \
-        #   --application-name MyAppName \
-        #   --deployment-group-name MyDeploymentGroup \
-        #   --deployment-config-name CodeDeployDefault.OneAtATime \
-        #   --s3-location bucket=MyDeploymentBucket,key=deployment_package.zip,bundleType=zip
+        aws codedeploy create-deployment \
+           --application-name MyAppName \
+           --deployment-group-name MyDeploymentGroup \
+           --deployment-config-name CodeDeployDefault.OneAtATime \
+           --s3-location bucket=MyDeploymentBucket,key=deployment_package.zip,bundleType=zip
+
+        echo "ECS service deployed."

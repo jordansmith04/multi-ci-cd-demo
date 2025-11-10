@@ -1,6 +1,4 @@
-# This file is used to configure your GitLab CI/CD pipeline.
-# It assumes you have a Kubernetes/ECS cluster connected to GitLab or 
-# have defined AWS credentials as CI/CD variables (e.g., AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY).
+# This file is used to configure the GitLab CI/CD pipeline.
 
 image: docker:20.10.16 
 variables:
@@ -9,7 +7,6 @@ variables:
   ECR_REGISTRY: "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
   IMAGE_URI: "${ECR_REGISTRY}/${ECR_REPOSITORY}"
 
-# Enable Docker in Docker
 services:
   - docker:20.10.16-dind
 
@@ -25,8 +22,7 @@ build_image:
     - echo "Running Build Stage..."
     - docker build -t $IMAGE_URI:$CI_COMMIT_SHORT_SHA .
     - docker tag $IMAGE_URI:$CI_COMMIT_SHORT_SHA $IMAGE_URI:latest
-  # Save the built image locally for the next stage (test)
-  # This is crucial for passing artifacts between stages
+  # Save the built image locally for the test stage
   artifacts:
     paths:
       - .
@@ -36,9 +32,8 @@ unit_test:
   stage: test
   script:
     - echo "Running Unit Tests..."
+    - docker run $IMAGE_URI:$CI_COMMIT_SHORT_SHA python -m unittest test_app.py
     - echo "Tests successful."
-    # In a real scenario, you'd run a command like:
-    # docker run $IMAGE_URI:$CI_COMMIT_SHORT_SHA python -m pytest
   dependencies:
     - build_image
 
@@ -66,8 +61,6 @@ deploy_production:
     - docker push $IMAGE_URI:latest
 
     - echo "Image Pushed. Triggering Deployment (Conceptual)..."
-    # This is where you would call AWS CodeDeploy or update an ECS service 
-    # using the AWS CLI or specialized GitLab Auto-DevOps features.
-    # Example: aws ecs update-service --cluster MyCluster --service MyService --force-new-deployment
+    - aws ecs update-service --cluster MyCluster --service MyService --force-new-deployment
   dependencies:
     - unit_test
